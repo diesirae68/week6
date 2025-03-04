@@ -13,7 +13,7 @@ export default function (express, bodyParser, createReadStream, crypto, http) {
     });
 
     app.get('/code/', (req, res) => {
-        const filePath = import.meta.url.substring(8);
+        const filePath = import.meta.url.substring(7);
         createReadStream(filePath).pipe(res);
     });
 
