@@ -1,4 +1,4 @@
-export default function (express, bodyParser, createReadStream, crypto, http, MongoClient) {
+export default function (express, bodyParser, createReadStream, crypto, http, pug) {
     const app = express();
 
     app.use((req, res, next) => {
@@ -8,65 +8,36 @@ export default function (express, bodyParser, createReadStream, crypto, http, Mo
         next();
     });
 
-    app.use(bodyParser.urlencoded({
-        extended: true
-    }));
+	app.use(bodyParser.json());
 
     app.get('/login/', (req, res) => {
         res.send('nukutontarog');
     });
 
     app.get('/code/', (req, res) => {
-        const filePath = import.meta.url.substring(7);
+        const filePath = import.meta.url.substring(8);
         createReadStream(filePath).pipe(res);
     });
 
-    app.get('/sha1/:input/', (req, res) => {
-        const hash = crypto.createHash('sha1').update(req.params.input).digest('hex');
-        res.send(hash);
-    });
+	////////
 
-    app.get('/req/', (req, res) => {
+    app.post('/render/', (req, res) => {
+        const random2 = req.body.random2;
+        if (!random2) return res.status(400).send('random2 is required');
+        const random3 = req.body.random3;
+        if (!random3) return res.status(400).send('random3 is required');
         const addr = req.query.addr;
         if (!addr) return res.status(400).send('Address is required');
 
         http.get(addr, (response) => {
             let data = '';
-            response.on('data', (chunk) => { data += chunk; });
-            response.on('end', () => { res.send(data); });
+            response.on('data', (chunk) => {
+                data += chunk;
+            });
+            response.on('end', () => {
+                res.send(pug.render(data, {random2: random2, random3: random3}));
+            });
         }).on("error", (err) => { res.status(500).send(err.message); });
-    });
-
-    app.post('/req/', bodyParser.text(), (req, res) => {
-        const addr = req.body;
-        if (!addr) return res.status(400).send('Address is required');
-        http.get(addr, (response) => {
-            let data = '';
-            response.on('data', (chunk) => { data += chunk; });
-            response.on('end', () => { res.send(data); });
-        }).on("error", (err) => { res.status(500).send(err.message); });
-    });
-
-    app.post('/insert/', (req, res) => {
-        const login = req.body.login;
-        if (!login) return res.status(400).send('Login is required');
-        const password = req.body.password;
-        if (!password) return res.status(400).send('Password is required');
-        const URL = req.body.URL;
-        if (!URL) return res.status(400).send('URL is required');
-        const client = new MongoClient(URL);
-        (async () => {
-            try {
-                await client.connect();
-                const users = await client.db().collection('users');
-                const result = await users.insertOne({login: login, password: password});
-                const { insertedId } = result;
-                await client.close();
-                res.send(insertedId);
-            } catch (e) {
-                res.status(500).send('MongoDB error');
-            }
-        })();
     });
 
     app.all('*', (req, res) => {

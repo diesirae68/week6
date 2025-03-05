@@ -3,9 +3,9 @@ import bodyParser from 'body-parser';
 import { createReadStream } from 'fs';
 import http from 'http';
 import crypto from 'crypto';
+import pug from 'pug';
 import appSrc from './app.js';
-import mongodb from 'mongodb';
 
-const app = appSrc(express, bodyParser, createReadStream, crypto, http, mongodb.MongoClient);
+const app = appSrc(express, bodyParser, createReadStream, crypto, http, pug);
 
 app.listen(process.env.PORT || 3000);
