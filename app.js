@@ -1,4 +1,4 @@
-export default function (express, bodyParser, createReadStream, crypto, http) {
+export default function (express, bodyParser, createReadStream, crypto, http, MongoClient) {
     const app = express();
 
     app.use((req, res, next) => {
@@ -8,12 +8,16 @@ export default function (express, bodyParser, createReadStream, crypto, http) {
         next();
     });
 
+    app.use(bodyParser.urlencoded({
+        extended: true
+    }));
+
     app.get('/login/', (req, res) => {
         res.send('nukutontarog');
     });
 
     app.get('/code/', (req, res) => {
-        const filePath = import.meta.url.substring(7);
+        const filePath = import.meta.url.substring(8);
         createReadStream(filePath).pipe(res);
     });
 
@@ -41,6 +45,28 @@ export default function (express, bodyParser, createReadStream, crypto, http) {
             response.on('data', (chunk) => { data += chunk; });
             response.on('end', () => { res.send(data); });
         }).on("error", (err) => { res.status(500).send(err.message); });
+    });
+
+    app.post('/insert/', (req, res) => {
+        const login = req.body.login;
+        if (!login) return res.status(400).send('Login is required');
+        const password = req.body.password;
+        if (!password) return res.status(400).send('Password is required');
+        const URL = req.body.URL;
+        if (!URL) return res.status(400).send('URL is required');
+        const client = new MongoClient(URL);
+        (async () => {
+            try {
+                await client.connect();
+                const users = await client.db().collection('users');
+                const result = await users.insertOne({login: login, password: password});
+                const { insertedId } = result;
+                await client.close();
+                res.send(insertedId);
+            } catch (e) {
+                res.status(500).send('MongoDB error');
+            }
+        })();
     });
 
     app.all('*', (req, res) => {
