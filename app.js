@@ -1,4 +1,4 @@
-export default function (express, bodyParser, createReadStream, crypto, http, pug) {
+export default function (express, bodyParser, createReadStream, crypto, http, https, pug) {
     const app = express();
 
     app.use((req, res, next) => {
@@ -19,7 +19,19 @@ export default function (express, bodyParser, createReadStream, crypto, http, pu
         createReadStream(filePath).pipe(res);
     });
 
-	////////
+    app.get('/wordpress/wp-json/wp/v2/posts/1', (req, res) => {
+        https.get('https://phpmage.ru/projects/wordpress/wp-json/wp/v2/posts/1', (response) => {
+            let data = '';
+            response.on('data', (chunk) => {
+                data += chunk;
+            });
+            response.on('end', () => {
+                data = JSON.parse(data);
+                res.header('Content-Type', 'application/json');
+                res.send(JSON.stringify({title: data.title}));
+            });
+        }).on("error", (err) => { res.status(500).send(err.message); });
+    });
 
     app.post('/render/', (req, res) => {
         const random2 = req.body.random2;
